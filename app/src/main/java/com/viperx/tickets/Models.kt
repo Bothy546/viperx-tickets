@@ -1,14 +1,16 @@
 package com.viperx.tickets
 
 data class Fixture(
-    val fixtureId: Long,
-    val homeTeam: String?,
-    val awayTeam: String?,
-    val startTime: String?
+    val fixtureId: String,
+    val participant1Name: String?,
+    val participant2Name: String?,
+    val startTime: String?,
+    val statusName: String?,
+    val hasOdds: Boolean?
 )
 
 data class OddsResponse(
-    val fixtureId: Long?,
+    val fixtureId: String?,
     val markets: List<MarketGroup>?
 )
 
