@@ -4,80 +4,75 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { MaterialTheme { AppRoot() } }
+        setContent { MaterialTheme { DebugScreen() } }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppRoot() {
-    val repo = remember { TicketRepository() }
-    var tickets by remember { mutableStateOf<List<Ticket>?>(null) }
-    var loading by remember { mutableStateOf(true) }
+fun DebugScreen() {
+    var output by remember { mutableStateOf("Tap the button to test the API.") }
+    var loading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
-        tickets = repo.getTodaysTickets()
-        loading = false
-    }
+    Scaffold(topBar = { TopAppBar(title = { Text("Viper X - DEBUG MODE") }) }) { padding ->
+        Column(Modifier.padding(padding).padding(16.dp)) {
+            Button(onClick = {
+                loading = true
+                output = "Loading..."
+                scope.launch {
+                    output = withContext(Dispatchers.IO) {
+                        try {
+                            val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+                            val sb = StringBuilder()
+                            sb.append("TODAY = $today\n\n")
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Viper X Tickets") }) }) { padding ->
-        Box(Modifier.padding(padding).fillMaxSize()) {
-            if (loading) {
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
-            } else {
-                Column {
-                    Button(
-                        onClick = {
-                            loading = true
-                            scope.launch {
-                                tickets = repo.getTodaysTickets()
-                                loading = false
-                            }
-                        },
-                        modifier = Modifier.padding(16.dp)
-                    ) { Text("Refresh Today's Tickets") }
+                            // Raw call 1: fixtures
+                            val fixturesUrl = "${Config.BASE_URL}fixtures?apiKey=${Config.API_KEY}&sportId=10&from=$today&to=$today&hasOdds=true"
+                            sb.append("FIXTURES URL:\n$fixturesUrl\n\n")
 
-                    LazyColumn {
-                        items(tickets ?: emptyList()) { ticket -> TicketCard(ticket) }
+                            val client = okhttp3.OkHttpClient()
+                            val req1 = okhttp3.Request.Builder().url(fixturesUrl).build()
+                            val resp1 = client.newCall(req1).execute()
+                            val body1 = resp1.body?.string() ?: "NULL BODY"
+                            sb.append("FIXTURES RESPONSE CODE: ${resp1.code}\n")
+                            sb.append("FIXTURES RAW BODY:\n${body1.take(2000)}\n\n")
+
+                            sb.toString()
+                        } catch (e: Exception) {
+                            "ERROR: ${e.message}\n${e.stackTraceToString()}"
+                        }
                     }
+                    loading = false
                 }
+            }) {
+                Text(if (loading) "Loading..." else "Test Fixtures API Call")
             }
-        }
-    }
-}
 
-@Composable
-fun TicketCard(ticket: Ticket) {
-    Card(Modifier.padding(12.dp).fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Text(ticket.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(16.dp))
+
             Text(
-                "Total Odds: %.2f".format(ticket.totalOdds),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold
+                output,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
             )
-            Text("Estimated chance all legs win: %.2f%%".format(ticket.combinedProbability * 100))
-            Divider(Modifier.padding(vertical = 8.dp))
-            ticket.legs.forEach { leg ->
-                Column(Modifier.padding(vertical = 4.dp)) {
-                    Text(leg.matchName, fontWeight = FontWeight.SemiBold)
-                    Text("${leg.marketType} → ${leg.selection} @ ${leg.odds}")
-                }
-            }
         }
     }
 
