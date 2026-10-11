@@ -39,7 +39,7 @@ fun DebugScreen() {
                     output = withContext(Dispatchers.IO) {
                         try {
                             val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-                            val url = "${Config.BASE_URL}fixtures?apiKey=${Config.API_KEY}&sportId=10&from=$today&to=$today&hasOdds=true"
+                            val url = "${Config.BASE_URL}fixtures?apiKey=${Config.API_KEY}&sportId=10&from=$today&to=$today"
                             val client = okhttp3.OkHttpClient()
                             val req = okhttp3.Request.Builder().url(url).build()
                             val resp = client.newCall(req).execute()
