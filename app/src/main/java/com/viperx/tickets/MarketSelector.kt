@@ -3,7 +3,7 @@ package com.viperx.tickets
 object MarketSelector {
     fun buildLegs(fixture: Fixture, odds: OddsResponse): List<Leg> {
         val markets = odds.markets ?: return emptyList()
-        val matchName = "${fixture.homeTeam ?: "Home"} vs ${fixture.awayTeam ?: "Away"}"
+        val matchName = "${fixture.participant1Name ?: "Team A"} vs ${fixture.participant2Name ?: "Team B"}"
         val legs = mutableListOf<Leg>()
 
         for (market in markets) {
